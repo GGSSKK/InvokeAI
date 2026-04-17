@@ -1,0 +1,907 @@
+{
+  "id": "user_resize_prep_scale_to_fit_v1",
+  "name": "Image Resize Prep - Scale to Fit + LaMa Infill",
+  "author": "",
+  "description": "入力画像を長辺基準でモデル最適サイズにフィットさせ、余白をLaMa Infillで補完する前処理ワークフロー。ControlNet/I2I用途向け。",
+  "version": "1.0.0",
+  "contact": "",
+  "tags": "resize, infill, preprocessing, controlnet, i2i",
+  "notes": "【使い方】\n1. Input Image ノードに前処理したい画像を接続\n2. Main Model Loader でモデルを選択（Ideal Size の計算に使用）\n3. LaMa Infill ノードから出力画像を取得\n\n【動作】\n入力画像の長辺が Ideal Size の対応辺にぴったり収まるようスケールし、\n短辺側に生じた余白を中央配置で LaMa Infill により自然補完します。\n\n【クロップ版への切替】\nFloat Math (MIN scale) ノードの operation を MAX に変更すると\n短辺基準スケール＋センタークロップ版に切り替わります。\nその場合 Center Pad と LaMa Infill は不要になります。\n\n【注意】LaMa Infill の初回実行時はモデルファイルをダウンロードします。",
+  "exposedFields": [
+    {
+      "nodeId": "a1a1a1a1-0001-4000-8000-000000000001",
+      "fieldName": "image"
+    },
+    {
+      "nodeId": "a1a1a1a1-0002-4000-8000-000000000002",
+      "fieldName": "model"
+    },
+    {
+      "nodeId": "a1a1a1a1-0019-4000-8000-000000000019",
+      "fieldName": "board"
+    }
+  ],
+  "meta": {
+    "version": "3.0.0",
+    "category": "user"
+  },
+  "nodes": [
+    {
+      "id": "a1a1a1a1-0001-4000-8000-000000000001",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0001-4000-8000-000000000001",
+        "type": "image",
+        "version": "1.0.2",
+        "label": "Input Image",
+        "notes": "前処理したい入力画像をここに接続",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": true,
+        "inputs": {
+          "image": {
+            "name": "image",
+            "label": "Input Image"
+          }
+        }
+      },
+      "position": { "x": 0, "y": 250 }
+    },
+    {
+      "id": "a1a1a1a1-0002-4000-8000-000000000002",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0002-4000-8000-000000000002",
+        "type": "main_model_loader",
+        "version": "1.0.3",
+        "label": "Main Model Loader",
+        "notes": "Ideal Size の計算に使用（SD1.5=512, SDXL/Flux=1024 基準）",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": false,
+        "inputs": {
+          "model": {
+            "name": "model",
+            "label": ""
+          }
+        }
+      },
+      "position": { "x": 0, "y": -50 }
+    },
+    {
+      "id": "a1a1a1a1-0003-4000-8000-000000000003",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0003-4000-8000-000000000003",
+        "type": "ideal_size",
+        "version": "1.0.6",
+        "label": "Ideal Size",
+        "notes": "モデルアーキテクチャに最適な生成解像度を計算（8の倍数）",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": true,
+        "inputs": {
+          "width": {
+            "name": "width",
+            "label": ""
+          },
+          "height": {
+            "name": "height",
+            "label": ""
+          },
+          "unet": {
+            "name": "unet",
+            "label": ""
+          },
+          "multiplier": {
+            "name": "multiplier",
+            "label": "",
+            "value": 1.0
+          }
+        }
+      },
+      "position": { "x": 400, "y": 100 }
+    },
+    {
+      "id": "a1a1a1a1-0004-4000-8000-000000000004",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0004-4000-8000-000000000004",
+        "type": "float_math",
+        "version": "1.0.1",
+        "label": "scale_x = TW ÷ W",
+        "notes": "横方向スケール比 = 目標幅 / 入力幅",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": true,
+        "inputs": {
+          "operation": {
+            "name": "operation",
+            "label": "",
+            "value": "DIV"
+          },
+          "a": {
+            "name": "a",
+            "label": "TW (target width)"
+          },
+          "b": {
+            "name": "b",
+            "label": "W (input width)"
+          }
+        }
+      },
+      "position": { "x": 750, "y": -100 }
+    },
+    {
+      "id": "a1a1a1a1-0005-4000-8000-000000000005",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0005-4000-8000-000000000005",
+        "type": "float_math",
+        "version": "1.0.1",
+        "label": "scale_y = TH ÷ H",
+        "notes": "縦方向スケール比 = 目標高さ / 入力高さ",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": true,
+        "inputs": {
+          "operation": {
+            "name": "operation",
+            "label": "",
+            "value": "DIV"
+          },
+          "a": {
+            "name": "a",
+            "label": "TH (target height)"
+          },
+          "b": {
+            "name": "b",
+            "label": "H (input height)"
+          }
+        }
+      },
+      "position": { "x": 750, "y": 200 }
+    },
+    {
+      "id": "a1a1a1a1-0006-4000-8000-000000000006",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0006-4000-8000-000000000006",
+        "type": "float_math",
+        "version": "1.0.1",
+        "label": "scale = MIN(scale_x, scale_y)",
+        "notes": "長辺基準スケール。MAX に変更すると短辺基準（クロップ版）になる",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": true,
+        "inputs": {
+          "operation": {
+            "name": "operation",
+            "label": "",
+            "value": "MIN"
+          },
+          "a": {
+            "name": "a",
+            "label": "scale_x"
+          },
+          "b": {
+            "name": "b",
+            "label": "scale_y"
+          }
+        }
+      },
+      "position": { "x": 1050, "y": 50 }
+    },
+    {
+      "id": "a1a1a1a1-0007-4000-8000-000000000007",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0007-4000-8000-000000000007",
+        "type": "float_math",
+        "version": "1.0.1",
+        "label": "scaled_W = W × scale",
+        "notes": "",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": true,
+        "inputs": {
+          "operation": {
+            "name": "operation",
+            "label": "",
+            "value": "MUL"
+          },
+          "a": {
+            "name": "a",
+            "label": "W (input width)"
+          },
+          "b": {
+            "name": "b",
+            "label": "scale"
+          }
+        }
+      },
+      "position": { "x": 1300, "y": -100 }
+    },
+    {
+      "id": "a1a1a1a1-0008-4000-8000-000000000008",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0008-4000-8000-000000000008",
+        "type": "float_math",
+        "version": "1.0.1",
+        "label": "scaled_H = H × scale",
+        "notes": "",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": true,
+        "inputs": {
+          "operation": {
+            "name": "operation",
+            "label": "",
+            "value": "MUL"
+          },
+          "a": {
+            "name": "a",
+            "label": "H (input height)"
+          },
+          "b": {
+            "name": "b",
+            "label": "scale"
+          }
+        }
+      },
+      "position": { "x": 1300, "y": 200 }
+    },
+    {
+      "id": "a1a1a1a1-0009-4000-8000-000000000009",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0009-4000-8000-000000000009",
+        "type": "float_to_int",
+        "version": "1.0.1",
+        "label": "scaled_W → int (Floor)",
+        "notes": "Floor で切り捨てることで TW を超えないことを保証",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": true,
+        "inputs": {
+          "value": {
+            "name": "value",
+            "label": ""
+          },
+          "multiple": {
+            "name": "multiple",
+            "label": "",
+            "value": 1
+          },
+          "method": {
+            "name": "method",
+            "label": "",
+            "value": "Floor"
+          }
+        }
+      },
+      "position": { "x": 1550, "y": -100 }
+    },
+    {
+      "id": "a1a1a1a1-0010-4000-8000-000000000010",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0010-4000-8000-000000000010",
+        "type": "float_to_int",
+        "version": "1.0.1",
+        "label": "scaled_H → int (Floor)",
+        "notes": "Floor で切り捨てることで TH を超えないことを保証",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": true,
+        "inputs": {
+          "value": {
+            "name": "value",
+            "label": ""
+          },
+          "multiple": {
+            "name": "multiple",
+            "label": "",
+            "value": 1
+          },
+          "method": {
+            "name": "method",
+            "label": "",
+            "value": "Floor"
+          }
+        }
+      },
+      "position": { "x": 1550, "y": 200 }
+    },
+    {
+      "id": "a1a1a1a1-0011-4000-8000-000000000011",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0011-4000-8000-000000000011",
+        "type": "img_resize",
+        "version": "1.2.2",
+        "label": "Resize Image",
+        "notes": "スケール後サイズ (scaled_W × scaled_H) にリサイズ",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": true,
+        "inputs": {
+          "board": {
+            "name": "board",
+            "label": ""
+          },
+          "metadata": {
+            "name": "metadata",
+            "label": ""
+          },
+          "image": {
+            "name": "image",
+            "label": ""
+          },
+          "width": {
+            "name": "width",
+            "label": "",
+            "value": 512
+          },
+          "height": {
+            "name": "height",
+            "label": "",
+            "value": 512
+          },
+          "resample_mode": {
+            "name": "resample_mode",
+            "label": "",
+            "value": "bicubic"
+          }
+        }
+      },
+      "position": { "x": 1800, "y": 350 }
+    },
+    {
+      "id": "a1a1a1a1-0012-4000-8000-000000000012",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0012-4000-8000-000000000012",
+        "type": "integer_math",
+        "version": "1.0.1",
+        "label": "pad_W = TW - scaled_W",
+        "notes": "横方向の合計パディング量",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": true,
+        "inputs": {
+          "operation": {
+            "name": "operation",
+            "label": "",
+            "value": "SUB"
+          },
+          "a": {
+            "name": "a",
+            "label": "TW"
+          },
+          "b": {
+            "name": "b",
+            "label": "scaled_W"
+          }
+        }
+      },
+      "position": { "x": 1800, "y": -200 }
+    },
+    {
+      "id": "a1a1a1a1-0013-4000-8000-000000000013",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0013-4000-8000-000000000013",
+        "type": "integer_math",
+        "version": "1.0.1",
+        "label": "pad_H = TH - scaled_H",
+        "notes": "縦方向の合計パディング量",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": true,
+        "inputs": {
+          "operation": {
+            "name": "operation",
+            "label": "",
+            "value": "SUB"
+          },
+          "a": {
+            "name": "a",
+            "label": "TH"
+          },
+          "b": {
+            "name": "b",
+            "label": "scaled_H"
+          }
+        }
+      },
+      "position": { "x": 1800, "y": 50 }
+    },
+    {
+      "id": "a1a1a1a1-0014-4000-8000-000000000014",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0014-4000-8000-000000000014",
+        "type": "integer_math",
+        "version": "1.0.1",
+        "label": "left = pad_W ÷ 2",
+        "notes": "左パディング量（Floor）",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": true,
+        "inputs": {
+          "operation": {
+            "name": "operation",
+            "label": "",
+            "value": "DIV"
+          },
+          "a": {
+            "name": "a",
+            "label": "pad_W"
+          },
+          "b": {
+            "name": "b",
+            "label": "",
+            "value": 2
+          }
+        }
+      },
+      "position": { "x": 2100, "y": -300 }
+    },
+    {
+      "id": "a1a1a1a1-0015-4000-8000-000000000015",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0015-4000-8000-000000000015",
+        "type": "integer_math",
+        "version": "1.0.1",
+        "label": "right = pad_W - left",
+        "notes": "右パディング量（奇数ピクセル差を右側に割当）",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": true,
+        "inputs": {
+          "operation": {
+            "name": "operation",
+            "label": "",
+            "value": "SUB"
+          },
+          "a": {
+            "name": "a",
+            "label": "pad_W"
+          },
+          "b": {
+            "name": "b",
+            "label": "left"
+          }
+        }
+      },
+      "position": { "x": 2100, "y": -100 }
+    },
+    {
+      "id": "a1a1a1a1-0016-4000-8000-000000000016",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0016-4000-8000-000000000016",
+        "type": "integer_math",
+        "version": "1.0.1",
+        "label": "top = pad_H ÷ 2",
+        "notes": "上パディング量（Floor）",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": true,
+        "inputs": {
+          "operation": {
+            "name": "operation",
+            "label": "",
+            "value": "DIV"
+          },
+          "a": {
+            "name": "a",
+            "label": "pad_H"
+          },
+          "b": {
+            "name": "b",
+            "label": "",
+            "value": 2
+          }
+        }
+      },
+      "position": { "x": 2100, "y": 100 }
+    },
+    {
+      "id": "a1a1a1a1-0017-4000-8000-000000000017",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0017-4000-8000-000000000017",
+        "type": "integer_math",
+        "version": "1.0.1",
+        "label": "bottom = pad_H - top",
+        "notes": "下パディング量（奇数ピクセル差を下側に割当）",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": true,
+        "inputs": {
+          "operation": {
+            "name": "operation",
+            "label": "",
+            "value": "SUB"
+          },
+          "a": {
+            "name": "a",
+            "label": "pad_H"
+          },
+          "b": {
+            "name": "b",
+            "label": "top"
+          }
+        }
+      },
+      "position": { "x": 2100, "y": 300 }
+    },
+    {
+      "id": "a1a1a1a1-0018-4000-8000-000000000018",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0018-4000-8000-000000000018",
+        "type": "img_pad_crop",
+        "version": "1.0.0",
+        "label": "Center Pad",
+        "notes": "リサイズ済み画像を TW×TH にセンターパディング（透明 RGBA で埋める）",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": true,
+        "useCache": true,
+        "inputs": {
+          "image": {
+            "name": "image",
+            "label": ""
+          },
+          "left": {
+            "name": "left",
+            "label": "",
+            "value": 0
+          },
+          "right": {
+            "name": "right",
+            "label": "",
+            "value": 0
+          },
+          "top": {
+            "name": "top",
+            "label": "",
+            "value": 0
+          },
+          "bottom": {
+            "name": "bottom",
+            "label": "",
+            "value": 0
+          }
+        }
+      },
+      "position": { "x": 2400, "y": 100 }
+    },
+    {
+      "id": "a1a1a1a1-0019-4000-8000-000000000019",
+      "type": "invocation",
+      "data": {
+        "id": "a1a1a1a1-0019-4000-8000-000000000019",
+        "type": "infill_lama",
+        "version": "1.2.2",
+        "label": "LaMa Infill",
+        "notes": "透明パディング部分を LaMa で自然補完。初回実行時はモデルをダウンロード",
+        "nodePack": "invokeai",
+        "isOpen": true,
+        "isIntermediate": false,
+        "useCache": true,
+        "inputs": {
+          "board": {
+            "name": "board",
+            "label": ""
+          },
+          "metadata": {
+            "name": "metadata",
+            "label": ""
+          },
+          "image": {
+            "name": "image",
+            "label": ""
+          }
+        }
+      },
+      "position": { "x": 2750, "y": 100 }
+    }
+  ],
+  "edges": [
+    {
+      "id": "reactflow__edge-a1a1a1a1-0001-4000-8000-000000000001width-a1a1a1a1-0003-4000-8000-000000000003width",
+      "type": "default",
+      "source": "a1a1a1a1-0001-4000-8000-000000000001",
+      "target": "a1a1a1a1-0003-4000-8000-000000000003",
+      "sourceHandle": "width",
+      "targetHandle": "width"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0001-4000-8000-000000000001height-a1a1a1a1-0003-4000-8000-000000000003height",
+      "type": "default",
+      "source": "a1a1a1a1-0001-4000-8000-000000000001",
+      "target": "a1a1a1a1-0003-4000-8000-000000000003",
+      "sourceHandle": "height",
+      "targetHandle": "height"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0002-4000-8000-000000000002unet-a1a1a1a1-0003-4000-8000-000000000003unet",
+      "type": "default",
+      "source": "a1a1a1a1-0002-4000-8000-000000000002",
+      "target": "a1a1a1a1-0003-4000-8000-000000000003",
+      "sourceHandle": "unet",
+      "targetHandle": "unet"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0003-4000-8000-000000000003width-a1a1a1a1-0004-4000-8000-000000000004a",
+      "type": "default",
+      "source": "a1a1a1a1-0003-4000-8000-000000000003",
+      "target": "a1a1a1a1-0004-4000-8000-000000000004",
+      "sourceHandle": "width",
+      "targetHandle": "a"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0001-4000-8000-000000000001width-a1a1a1a1-0004-4000-8000-000000000004b",
+      "type": "default",
+      "source": "a1a1a1a1-0001-4000-8000-000000000001",
+      "target": "a1a1a1a1-0004-4000-8000-000000000004",
+      "sourceHandle": "width",
+      "targetHandle": "b"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0003-4000-8000-000000000003height-a1a1a1a1-0005-4000-8000-000000000005a",
+      "type": "default",
+      "source": "a1a1a1a1-0003-4000-8000-000000000003",
+      "target": "a1a1a1a1-0005-4000-8000-000000000005",
+      "sourceHandle": "height",
+      "targetHandle": "a"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0001-4000-8000-000000000001height-a1a1a1a1-0005-4000-8000-000000000005b",
+      "type": "default",
+      "source": "a1a1a1a1-0001-4000-8000-000000000001",
+      "target": "a1a1a1a1-0005-4000-8000-000000000005",
+      "sourceHandle": "height",
+      "targetHandle": "b"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0004-4000-8000-000000000004value-a1a1a1a1-0006-4000-8000-000000000006a",
+      "type": "default",
+      "source": "a1a1a1a1-0004-4000-8000-000000000004",
+      "target": "a1a1a1a1-0006-4000-8000-000000000006",
+      "sourceHandle": "value",
+      "targetHandle": "a"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0005-4000-8000-000000000005value-a1a1a1a1-0006-4000-8000-000000000006b",
+      "type": "default",
+      "source": "a1a1a1a1-0005-4000-8000-000000000005",
+      "target": "a1a1a1a1-0006-4000-8000-000000000006",
+      "sourceHandle": "value",
+      "targetHandle": "b"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0001-4000-8000-000000000001width-a1a1a1a1-0007-4000-8000-000000000007a",
+      "type": "default",
+      "source": "a1a1a1a1-0001-4000-8000-000000000001",
+      "target": "a1a1a1a1-0007-4000-8000-000000000007",
+      "sourceHandle": "width",
+      "targetHandle": "a"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0006-4000-8000-000000000006value-a1a1a1a1-0007-4000-8000-000000000007b",
+      "type": "default",
+      "source": "a1a1a1a1-0006-4000-8000-000000000006",
+      "target": "a1a1a1a1-0007-4000-8000-000000000007",
+      "sourceHandle": "value",
+      "targetHandle": "b"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0001-4000-8000-000000000001height-a1a1a1a1-0008-4000-8000-000000000008a",
+      "type": "default",
+      "source": "a1a1a1a1-0001-4000-8000-000000000001",
+      "target": "a1a1a1a1-0008-4000-8000-000000000008",
+      "sourceHandle": "height",
+      "targetHandle": "a"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0006-4000-8000-000000000006value-a1a1a1a1-0008-4000-8000-000000000008b",
+      "type": "default",
+      "source": "a1a1a1a1-0006-4000-8000-000000000006",
+      "target": "a1a1a1a1-0008-4000-8000-000000000008",
+      "sourceHandle": "value",
+      "targetHandle": "b"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0007-4000-8000-000000000007value-a1a1a1a1-0009-4000-8000-000000000009value",
+      "type": "default",
+      "source": "a1a1a1a1-0007-4000-8000-000000000007",
+      "target": "a1a1a1a1-0009-4000-8000-000000000009",
+      "sourceHandle": "value",
+      "targetHandle": "value"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0008-4000-8000-000000000008value-a1a1a1a1-0010-4000-8000-000000000010value",
+      "type": "default",
+      "source": "a1a1a1a1-0008-4000-8000-000000000008",
+      "target": "a1a1a1a1-0010-4000-8000-000000000010",
+      "sourceHandle": "value",
+      "targetHandle": "value"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0001-4000-8000-000000000001image-a1a1a1a1-0011-4000-8000-000000000011image",
+      "type": "default",
+      "source": "a1a1a1a1-0001-4000-8000-000000000001",
+      "target": "a1a1a1a1-0011-4000-8000-000000000011",
+      "sourceHandle": "image",
+      "targetHandle": "image"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0009-4000-8000-000000000009value-a1a1a1a1-0011-4000-8000-000000000011width",
+      "type": "default",
+      "source": "a1a1a1a1-0009-4000-8000-000000000009",
+      "target": "a1a1a1a1-0011-4000-8000-000000000011",
+      "sourceHandle": "value",
+      "targetHandle": "width"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0010-4000-8000-000000000010value-a1a1a1a1-0011-4000-8000-000000000011height",
+      "type": "default",
+      "source": "a1a1a1a1-0010-4000-8000-000000000010",
+      "target": "a1a1a1a1-0011-4000-8000-000000000011",
+      "sourceHandle": "value",
+      "targetHandle": "height"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0003-4000-8000-000000000003width-a1a1a1a1-0012-4000-8000-000000000012a",
+      "type": "default",
+      "source": "a1a1a1a1-0003-4000-8000-000000000003",
+      "target": "a1a1a1a1-0012-4000-8000-000000000012",
+      "sourceHandle": "width",
+      "targetHandle": "a"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0009-4000-8000-000000000009value-a1a1a1a1-0012-4000-8000-000000000012b",
+      "type": "default",
+      "source": "a1a1a1a1-0009-4000-8000-000000000009",
+      "target": "a1a1a1a1-0012-4000-8000-000000000012",
+      "sourceHandle": "value",
+      "targetHandle": "b"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0003-4000-8000-000000000003height-a1a1a1a1-0013-4000-8000-000000000013a",
+      "type": "default",
+      "source": "a1a1a1a1-0003-4000-8000-000000000003",
+      "target": "a1a1a1a1-0013-4000-8000-000000000013",
+      "sourceHandle": "height",
+      "targetHandle": "a"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0010-4000-8000-000000000010value-a1a1a1a1-0013-4000-8000-000000000013b",
+      "type": "default",
+      "source": "a1a1a1a1-0010-4000-8000-000000000010",
+      "target": "a1a1a1a1-0013-4000-8000-000000000013",
+      "sourceHandle": "value",
+      "targetHandle": "b"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0012-4000-8000-000000000012value-a1a1a1a1-0014-4000-8000-000000000014a",
+      "type": "default",
+      "source": "a1a1a1a1-0012-4000-8000-000000000012",
+      "target": "a1a1a1a1-0014-4000-8000-000000000014",
+      "sourceHandle": "value",
+      "targetHandle": "a"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0012-4000-8000-000000000012value-a1a1a1a1-0015-4000-8000-000000000015a",
+      "type": "default",
+      "source": "a1a1a1a1-0012-4000-8000-000000000012",
+      "target": "a1a1a1a1-0015-4000-8000-000000000015",
+      "sourceHandle": "value",
+      "targetHandle": "a"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0014-4000-8000-000000000014value-a1a1a1a1-0015-4000-8000-000000000015b",
+      "type": "default",
+      "source": "a1a1a1a1-0014-4000-8000-000000000014",
+      "target": "a1a1a1a1-0015-4000-8000-000000000015",
+      "sourceHandle": "value",
+      "targetHandle": "b"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0013-4000-8000-000000000013value-a1a1a1a1-0016-4000-8000-000000000016a",
+      "type": "default",
+      "source": "a1a1a1a1-0013-4000-8000-000000000013",
+      "target": "a1a1a1a1-0016-4000-8000-000000000016",
+      "sourceHandle": "value",
+      "targetHandle": "a"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0013-4000-8000-000000000013value-a1a1a1a1-0017-4000-8000-000000000017a",
+      "type": "default",
+      "source": "a1a1a1a1-0013-4000-8000-000000000013",
+      "target": "a1a1a1a1-0017-4000-8000-000000000017",
+      "sourceHandle": "value",
+      "targetHandle": "a"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0016-4000-8000-000000000016value-a1a1a1a1-0017-4000-8000-000000000017b",
+      "type": "default",
+      "source": "a1a1a1a1-0016-4000-8000-000000000016",
+      "target": "a1a1a1a1-0017-4000-8000-000000000017",
+      "sourceHandle": "value",
+      "targetHandle": "b"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0011-4000-8000-000000000011image-a1a1a1a1-0018-4000-8000-000000000018image",
+      "type": "default",
+      "source": "a1a1a1a1-0011-4000-8000-000000000011",
+      "target": "a1a1a1a1-0018-4000-8000-000000000018",
+      "sourceHandle": "image",
+      "targetHandle": "image"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0014-4000-8000-000000000014value-a1a1a1a1-0018-4000-8000-000000000018left",
+      "type": "default",
+      "source": "a1a1a1a1-0014-4000-8000-000000000014",
+      "target": "a1a1a1a1-0018-4000-8000-000000000018",
+      "sourceHandle": "value",
+      "targetHandle": "left"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0015-4000-8000-000000000015value-a1a1a1a1-0018-4000-8000-000000000018right",
+      "type": "default",
+      "source": "a1a1a1a1-0015-4000-8000-000000000015",
+      "target": "a1a1a1a1-0018-4000-8000-000000000018",
+      "sourceHandle": "value",
+      "targetHandle": "right"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0016-4000-8000-000000000016value-a1a1a1a1-0018-4000-8000-000000000018top",
+      "type": "default",
+      "source": "a1a1a1a1-0016-4000-8000-000000000016",
+      "target": "a1a1a1a1-0018-4000-8000-000000000018",
+      "sourceHandle": "value",
+      "targetHandle": "top"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0017-4000-8000-000000000017value-a1a1a1a1-0018-4000-8000-000000000018bottom",
+      "type": "default",
+      "source": "a1a1a1a1-0017-4000-8000-000000000017",
+      "target": "a1a1a1a1-0018-4000-8000-000000000018",
+      "sourceHandle": "value",
+      "targetHandle": "bottom"
+    },
+    {
+      "id": "reactflow__edge-a1a1a1a1-0018-4000-8000-000000000018image-a1a1a1a1-0019-4000-8000-000000000019image",
+      "type": "default",
+      "source": "a1a1a1a1-0018-4000-8000-000000000018",
+      "target": "a1a1a1a1-0019-4000-8000-000000000019",
+      "sourceHandle": "image",
+      "targetHandle": "image"
+    }
+  ]
+}
